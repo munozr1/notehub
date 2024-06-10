@@ -1,0 +1,15 @@
+{
+  "manifest_version": 3,
+  "name": "NoHub",
+  "description": "Create readmes in the comfort of notion.",
+  "version": "1.2",
+  "action": {
+    "default_popup": "./src/popup.html",
+    "default_icon": "./images/nohub.png"
+  },
+  "host_permissions": [
+    "*://*.notion.com/*",
+    "*://*.github.com/*"
+  ],
+  "permissions":["cookies", "scripting", "activeTab"]
+}
