@@ -11,5 +11,13 @@
     "*://*.notion.com/*",
     "*://*.github.com/*"
   ],
+  "content_scripts": [
+    {
+      "matches":["https://www.notion.so/*"],
+      "js": ["./src/content/notion.js"],
+      "run_at":"document_end"
+    }
+  ],
   "permissions":["cookies", "scripting", "activeTab"]
+  
 }

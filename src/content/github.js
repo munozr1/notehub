@@ -1,8 +1,7 @@
 let gh_cookies = ""
 let gh_cookieArr = []
-let accessToken = "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"
+let accessToken = ""
 let github_repos = []
-let state = "Start"
 
 let owner = 'munozr1'
 const url = `https://api.github.com/users/${owner}/repos`;
@@ -78,7 +77,6 @@ async function SelectRepo() {
 }
 
 
-// Get the current file SHA
 async function getFileSha(user, reponame, filename) {
   const response = await fetch(`https://api.github.com/repos/${user}/${reponame}/contents/${filename}`, {
     method: 'GET',
@@ -121,6 +119,54 @@ async function updateFile(reponame, sha, filename) {
   }
   //const data = await response.json();
 }
+
+let state = "";
+let notion_numbered_list_block_count = 0;
+let markdown = "";
+
+function parseNotionHTML(){
+  const elms = document.getElementsByClassName("notion-page-content")[0].children;
+  for(const elm of elms){
+    elmAction(elm);
+  }
+}
+
+
+function elmAction(elm) {
+    const className = elm.className.split(" ")[1];
+    const element = elm.getElementsByClassName("notranslate")[0];
+    if (!element) {return console.log("notranslate not found")}
+    switch(className) {
+      case "notion-numbered_list-block":
+                markdown += `${++notion_numbered_list_block_count}. ${element.innerText} \n`
+            break;
+      case "notion-sub_header-block":
+                markdown += `## ${element.innerText}`;
+            break;
+      case "notion-bulleted_list-block":
+                markdown += `- ${element.innerText}`;
+            break;
+        default:
+            console.log("unknown element");
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
