@@ -1,8 +1,7 @@
 let state = "";
 let notion_numbered_list_block_count = 0;
 let markdown = "";
-let accessToken =
-  "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";
+let accessToken = "";
 let owner = "munozr1";
 const url = `https://api.github.com/users/${owner}/repos`;
 
@@ -35,18 +34,27 @@ function elmAction(elm) {
   const className = elm.className.split(" ")[1];
   const element = elm.getElementsByClassName("notranslate")[0];
   const img = elm.querySelector("img");
-  if (!element && !img) {
+  if (!element && !img && className != "notion-divider-block") {
     return console.log("notranslate | img not found", elm);
   }
   switch (className) {
+    case "notion-divider-block":
+      markdown += "\n---\n";
+      break;
+    case "notion-to_do-block":
+      markdown += element.style.textDecoration.includes("line-through")
+        ? "- [x]"
+        : "- [ ]";
+      markdown += ` ${element.innerText} \n`;
+      break;
     case "notion-code-block":
       let code = "";
       const language = elm.querySelector('div[role="button"]');
       const tokens = element.children;
-      for (token of tokens) {
+      for (const token of tokens) {
         code += token.innerText;
       }
-      markdown += "```" + language.innerText.trim() + "\n" + code + "\n```";
+      markdown += "```" + language.innerText + "\n" + code + "\n```\n";
       break;
     case "notion-sub_header-block":
       markdown += `## ${element.innerText} \n`;
@@ -140,6 +148,7 @@ function insertSyncButton() {
   </div>`;
   sync.addEventListener("click", async () => {
     repos = await getRepos();
+    console.log(repos);
     parseNotionHTML();
     const file = "README.md";
     const sha = await getFileSha(owner, repos[19].name, file);
