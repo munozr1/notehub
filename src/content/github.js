@@ -1,6 +1,6 @@
 let gh_cookies = ""
 let gh_cookieArr = []
-let accessToken = ""
+let accessToken = "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"
 let github_repos = []
 
 let owner = 'munozr1'
