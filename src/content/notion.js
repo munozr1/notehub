@@ -22,7 +22,6 @@ async function getRepos() {
 
 function parseNotionHTML() {
   markdown = "";
-  let res = document.getElementsByClassName("notion-page-content");
   const elms = document.getElementsByClassName("notion-page-content")[0]
     .children;
   for (const elm of elms) {
@@ -38,6 +37,22 @@ function elmAction(elm) {
     return console.log("notranslate | img not found", elm);
   }
   switch (className) {
+    case "notion-table-block":
+      const rows = elm.querySelectorAll("tr");
+      const divider =
+        "| --- ".repeat(rows[0].querySelectorAll("td").length) + "|";
+      let isFirstRow = true;
+      for (const row of rows) {
+        row
+          .querySelectorAll("td")
+          .forEach((td) => (markdown += `| ${td.innerText} `));
+        markdown += "|\n";
+        if (isFirstRow) {
+          markdown += divider + "\n";
+          isFirstRow = false;
+        }
+      }
+      break;
     case "notion-divider-block":
       markdown += "\n---\n";
       break;
@@ -147,12 +162,13 @@ function insertSyncButton() {
   </div>
   </div>`;
   sync.addEventListener("click", async () => {
-    repos = await getRepos();
-    console.log(repos);
+    // repos = await getRepos();
+    // console.log(repos);
     parseNotionHTML();
     const file = "README.md";
-    const sha = await getFileSha(owner, repos[19].name, file);
-    await updateFile(repos[19].name, sha, file);
+    // const sha = await getFileSha(owner, repos[19].name, file);
+    console.log(markdown);
+    //await updateFile(repos[19].name, sha, file);
   });
   nav.appendChild(sync);
 }
