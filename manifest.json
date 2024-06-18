@@ -7,17 +7,13 @@
     "default_popup": "./src/popup.html",
     "default_icon": "./images/nohub.png"
   },
-  "host_permissions": [
-    "*://*.notion.com/*",
-    "*://*.github.com/*"
-  ],
+  "host_permissions": ["*://*.notion.com/*", "*://*.github.com/*"],
   "content_scripts": [
     {
-      "matches":["https://www.notion.so/*"],
+      "matches": ["https://www.notion.so/*"],
       "js": ["./src/content/notion.js"],
-      "run_at":"document_end"
+      "run_at": "document_end"
     }
   ],
-  "permissions":["cookies", "scripting", "activeTab"]
-  
+  "permissions": ["cookies", "scripting", "activeTab", "identity"]
 }

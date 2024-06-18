@@ -2,7 +2,11 @@
 module.exports = {
   content: ["./**/*.{html,js}"],
   theme: {
-    extend: {},
+    extend: {
+      rotate: {
+        360: "360deg",
+      },
+    },
   },
   plugins: [],
-}
+};

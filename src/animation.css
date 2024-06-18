@@ -1,0 +1,6 @@
+.rotat {
+    transition: transform 1s !important;
+}
+.rotat.active {
+    transform: rotate(360deg) !important;
+}
