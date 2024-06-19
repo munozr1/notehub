@@ -191,13 +191,11 @@ const config = { childList: true, subtree: true };
 const callback = function (mutationsList, observer) {
   for (let mutation of mutationsList) {
     if (mutation.type === "childList") {
-      //let res = document.getElementsByClassName("notion-page-content");
       let res = document.getElementsByClassName("notion-topbar-action-buttons");
       if (res.length > 0) {
         if (res[0].children.length > 0) {
           console.log("Notion content loaded");
           insertSyncButton();
-          //parseNotionHTML();
           observer.disconnect(); // Stop observing after the content is found and parsed
         }
         break;
@@ -207,130 +205,138 @@ const callback = function (mutationsList, observer) {
 };
 
 function loadAuthCodeHtml(code) {
-    // Create the overlay container
-    const overlay = document.createElement('div');
-    overlay.id = 'sync-container';
-    overlay.style.position = 'fixed';
-    overlay.style.top = '0px';
-    overlay.style.left = '0px';
-    overlay.style.width = '100%';
-    overlay.style.height = '100%';
-    overlay.style.zIndex = '999';
-    overlay.style.display = 'flex';
-    overlay.style.justifyContent = 'center';
+  // Create the overlay container
+  const overlay = document.createElement("div");
+  overlay.id = "sync-container";
+  overlay.style.position = "fixed";
+  overlay.style.top = "0px";
+  overlay.style.left = "0px";
+  overlay.style.width = "100%";
+  overlay.style.height = "100%";
+  overlay.style.zIndex = "999";
+  overlay.style.display = "flex";
+  overlay.style.justifyContent = "center";
 
-    // Create the inner container
-    const innerContainer = document.createElement('div');
+  // Create the inner container
+  const innerContainer = document.createElement("div");
 
-    // Create the main box
-    const box = document.createElement('div');
-    box.style.backgroundColor = 'white';
-    box.style.borderRadius = '10px';
-    box.style.display = 'flex';
-    box.style.padding = '10px';
-    box.style.marginTop = '100px';
-    box.style.boxShadow = '0px 5px 20px 5px #000000';
+  // Create the main box
+  const box = document.createElement("div");
+  box.style.backgroundColor = "white";
+  box.style.borderRadius = "10px";
+  box.style.display = "flex";
+  box.style.padding = "10px";
+  box.style.marginTop = "100px";
+  box.style.boxShadow = "0px 5px 20px 5px #000000";
+  const exit = document.createElement("div");
+  exit.style.width = "15px";
+  exit.style.height = "15px";
+  exit.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>`;
+  exit.style.cursor = "pointer";
+  exit.addEventListener("click", () => {
+    document.getElementById("sync-container").remove();
+  });
+  box.appendChild(exit);
 
-    // Create the list
-    const ul = document.createElement('ul');
-    ul.style.listStyle = 'none';
-    ul.style.padding = '10px';
+  // Create the list
+  const ul = document.createElement("ul");
+  ul.style.listStyle = "none";
+  ul.style.padding = "10px";
 
-    // Create the list item
-    const li = document.createElement('li');
+  // Create the list item
+  const li = document.createElement("li");
 
-    // Create the list item container
-    const liContainer = document.createElement('div');
-    liContainer.style.display = 'flex';
-    liContainer.style.alignItems = 'center';
-    liContainer.style.position = 'relative';
-    liContainer.style.flexDirection = 'column';
+  // Create the list item container
+  const liContainer = document.createElement("div");
+  liContainer.style.display = "flex";
+  liContainer.style.alignItems = "center";
+  liContainer.style.position = "relative";
+  liContainer.style.flexDirection = "column";
 
-    // Create the message paragraph
-    const message = document.createElement('p');
-    message.style.color = 'gray';
-    message.style.margin = '0';
-    message.textContent = 'Use this code to authenticate with GitHub';
+  // Create the message paragraph
+  const message = document.createElement("p");
+  message.style.color = "gray";
+  message.style.margin = "0";
+  message.textContent = "Use this code to authenticate with GitHub";
 
-    // Create the code container
-    const codeContainer = document.createElement('div');
-    codeContainer.style.position = 'relative';
-    codeContainer.style.backgroundColor = '#202020';
-    codeContainer.style.borderRadius = '5px';
-    codeContainer.style.marginTop = '30px';
-    codeContainer.style.marginRight = '30px';
+  // Create the code container
+  const codeContainer = document.createElement("div");
+  codeContainer.style.position = "relative";
+  codeContainer.style.backgroundColor = "#202020";
+  codeContainer.style.borderRadius = "5px";
+  codeContainer.style.marginTop = "30px";
+  codeContainer.style.marginRight = "30px";
 
-    // Create the clipboard icon
-    let clipboardIcon = document.createElement('div');
-    clipboardIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>`
-    /*clipboardIcon.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-    clipboardIcon.setAttribute('fill', 'none');
-    clipboardIcon.setAttribute('viewBox', '0 0 24 24');
-    clipboardIcon.setAttribute('stroke-width', '1.5');
-    clipboardIcon.setAttribute('stroke', 'currentColor');
-    */
-    clipboardIcon.classList.add('size-6');
-    clipboardIcon.style.color = 'white';
-    clipboardIcon.style.width = '15px';
-    clipboardIcon.style.height = '15px';
-    clipboardIcon.style.position = 'absolute';
-    clipboardIcon.style.top = '2px';
-    clipboardIcon.style.right = '2px';
-    clipboardIcon.style.cursor = 'pointer';
+  // Create the clipboard icon
+  let clipboardIcon = document.createElement("div");
+  clipboardIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>`;
+  clipboardIcon.classList.add("size-6");
+  clipboardIcon.style.color = "white";
+  clipboardIcon.style.width = "15px";
+  clipboardIcon.style.height = "15px";
+  clipboardIcon.style.position = "absolute";
+  clipboardIcon.style.top = "2px";
+  clipboardIcon.style.right = "2px";
+  clipboardIcon.style.cursor = "pointer";
+  clipboardIcon.addEventListener("click", () => {
+    navigator.clipboard.writeText(code);
+  });
 
-    // Create the code paragraph
-    const codeParagraph = document.createElement('p');
-    codeParagraph.style.fontSize = '25px';
-    codeParagraph.style.margin = '0';
-    codeParagraph.style.marginTop = '15px';
-    codeParagraph.style.marginRight = '25px';
-    codeParagraph.style.marginLeft = '25px';
-    codeParagraph.style.color = 'white';
-    codeParagraph.style.marginBottom = '15px';
-    codeParagraph.textContent = code;
+  // Create the code paragraph
+  const codeParagraph = document.createElement("p");
+  codeParagraph.style.fontSize = "25px";
+  codeParagraph.style.margin = "0";
+  codeParagraph.style.marginTop = "15px";
+  codeParagraph.style.marginRight = "25px";
+  codeParagraph.style.marginLeft = "25px";
+  codeParagraph.style.color = "white";
+  codeParagraph.style.marginBottom = "15px";
+  codeParagraph.textContent = code;
 
-    // Append the code and clipboard icon to the code container
-    codeContainer.appendChild(clipboardIcon);
-    codeContainer.appendChild(codeParagraph);
+  // Append the code and clipboard icon to the code container
+  codeContainer.appendChild(clipboardIcon);
+  codeContainer.appendChild(codeParagraph);
 
-    // Create the arrow icon
-    const arrowIcon = document.createElement('div');
-    arrowIcon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 21.75C17.3848 21.75 21.75 17.3848 21.75 12C21.75 6.61522 17.3848 2.25 12 2.25C6.61522 2.25 2.25 6.61522 2.25 12C2.25 17.3848 6.61522 21.75 12 21.75ZM16.2803 12.5303C16.421 12.3897 16.5 12.1989 16.5 12C16.5 11.8011 16.421 11.6103 16.2803 11.4697L13.2803 8.46967C12.9874 8.17678 12.5126 8.17678 12.2197 8.46967C11.9268 8.76256 11.9268 9.23744 12.2197 9.53033L13.9393 11.25H8.25C7.83579 11.25 7.5 11.5858 7.5 12C7.5 12.4142 7.83579 12.75 8.25 12.75L13.9393 12.75L12.2197 14.4697C11.9268 14.7626 11.9268 15.2374 12.2197 15.5303C12.5126 15.8232 12.9874 15.8232 13.2803 15.5303L16.2803 12.5303Z" fill="#5E626B"/></svg>`
-    arrowIcon.style.marginTop = '15px';
-    arrowIcon.style.width = '15px';
-    arrowIcon.style.height = '15px';
-    
-    const temp = document.createElement('div');
-    temp.style.display = 'flex';
-    temp.style.alignItems= 'center';
+  // Create the arrow icon
+  const arrowIcon = document.createElement("div");
+  arrowIcon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 21.75C17.3848 21.75 21.75 17.3848 21.75 12C21.75 6.61522 17.3848 2.25 12 2.25C6.61522 2.25 2.25 6.61522 2.25 12C2.25 17.3848 6.61522 21.75 12 21.75ZM16.2803 12.5303C16.421 12.3897 16.5 12.1989 16.5 12C16.5 11.8011 16.421 11.6103 16.2803 11.4697L13.2803 8.46967C12.9874 8.17678 12.5126 8.17678 12.2197 8.46967C11.9268 8.76256 11.9268 9.23744 12.2197 9.53033L13.9393 11.25H8.25C7.83579 11.25 7.5 11.5858 7.5 12C7.5 12.4142 7.83579 12.75 8.25 12.75L13.9393 12.75L12.2197 14.4697C11.9268 14.7626 11.9268 15.2374 12.2197 15.5303C12.5126 15.8232 12.9874 15.8232 13.2803 15.5303L16.2803 12.5303Z" fill="#5E626B"/></svg>`;
+  arrowIcon.style.marginTop = "15px";
+  arrowIcon.style.width = "15px";
+  arrowIcon.style.height = "15px";
+  arrowIcon.style.cursor = "pointer";
+  arrowIcon.addEventListener("click", () => {
+    window.open("https://github.com/login/device", "_blank");
+  });
 
-    temp.appendChild(codeContainer);
-    temp.appendChild(arrowIcon);
-    // Append the elements to the list item container
-    liContainer.appendChild(message);
-    liContainer.appendChild(temp);
-    //liContainer.appendChild(arrowIcon);
+  const temp = document.createElement("div");
+  temp.style.display = "flex";
+  temp.style.alignItems = "center";
 
-    // Append the list item container to the list item
-    li.appendChild(liContainer);
+  temp.appendChild(codeContainer);
+  temp.appendChild(arrowIcon);
+  // Append the elements to the list item container
+  liContainer.appendChild(message);
+  liContainer.appendChild(temp);
+  //liContainer.appendChild(arrowIcon);
 
-    // Append the list item to the list
-    ul.appendChild(li);
+  // Append the list item container to the list item
+  li.appendChild(liContainer);
 
-    // Append the list to the box
-    box.appendChild(ul);
+  // Append the list item to the list
+  ul.appendChild(li);
 
-    // Append the box to the inner container
-    innerContainer.appendChild(box);
+  // Append the list to the box
+  box.appendChild(ul);
 
-    // Append the inner container to the overlay
-    overlay.appendChild(innerContainer);
+  // Append the box to the inner container
+  innerContainer.appendChild(box);
 
-    // Append the overlay to the body
-    document.getElementById("notion-app").appendChild(overlay);
+  // Append the inner container to the overlay
+  overlay.appendChild(innerContainer);
+
+  // Append the overlay to the body
+  document.getElementById("notion-app").appendChild(overlay);
 }
-
-
 
 async function sendMessage() {
   try {
@@ -343,7 +349,6 @@ async function sendMessage() {
     //TODO: display err
   }
 }
-
 
 const observer = new MutationObserver(callback);
 observer.observe(targetNode, config);
