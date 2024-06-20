@@ -12,7 +12,24 @@ async function getCurrentTab() {
   return tab;
 }
 
+async function searchRepos(event) {
+  if (event.target.value === "") return;
+  const username = await chrome.runtime.sendMessage({ state: "GETUSER" });
+  const url = `https://api.github.com/search/repositories?q=user:${username}+${event.target.value}`;
+  const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${auth.access_token}`,
+    },
+  });
+  if (!res.ok) throw new Error("err fetching repos");
+}
+
 async function getRepos(token) {
+  const username = await chrome.runtime.sendMessage({ state: "GETUSER" });
+  const url = `https://api.github.com/users/${username}/repos?per_page=100`;
   const res = await fetch(url, {
     method: "GET",
     headers: {
@@ -23,6 +40,7 @@ async function getRepos(token) {
   });
 
   if (!res.ok) throw new Error("err fetching repos");
+  console.log("repos fetched", res);
 
   return await res.json();
 }
@@ -182,10 +200,11 @@ async function insertSyncButton() {
         }
       });
     });
-    if (!auth.githubAuthentication.access_token) {
-      await initAuth();
-      return;
-    }
+    // if (!auth.githubAuthentication.access_token) {
+    //TODO: check if authenticated
+    await initAuth();
+    // return;
+    // }
     console.log("TODO: update github readme file", auth);
     parseNotionHTML();
   });
@@ -211,6 +230,15 @@ function insertLinkRepoButton() {
   const buttonText = document.createElement("span");
   buttonText.id = "link-repo-button-text";
   buttonText.textContent = "Link Repository";
+  button.addEventListener("click", async () => {
+    if (listOpen) document.getElementById("menu-content").innerHTML = "";
+    else {
+      const auth = await chrome.runtime.sendMessage({ type: "GETAUTH" });
+      const repos = await getRepos(auth.access_token);
+      insertRepositoriesList(repos);
+    }
+    listOpen = !listOpen;
+  });
   button.appendChild(buttonText);
 
   const buttonSvg = document.createElement("div");
@@ -229,19 +257,24 @@ function insertLinkRepoButton() {
   flyoutContainer.style.width = "180px";
   flyoutContainer.style.backgroundColor = "#202020";
   flyoutContainer.style.borderRadius = "10px";
+  flyoutContainer.style.overflow = "hidden";
 
   // Create the menu content
   const menuContent = document.createElement("div");
   menuContent.id = "menu-content";
 
+  const searchbar = document.createElement("input");
+  searchbar.type = "text";
+  searchbar.placeholder = "Search repositories";
+  searchbar.style.backgroundColor = "#202020";
+  searchbar.style.border = "none";
+  searchbar.style.padding = "5px";
+  // on change call a function called searchRepo(query) with debounce of 500ms
+  searchbar.addEventListener("input", debounce(searchRepos, 500));
+
+  flyoutContainer.appendChild(searchbar);
   flyoutContainer.appendChild(menuContent);
   container.appendChild(flyoutContainer);
-
-  container.addEventListener("click", () => {
-    if (listOpen) document.getElementById("menu-content").innerHTML = "";
-    else insertRepositoriesList();
-    listOpen = !listOpen;
-  });
 
   document
     .getElementsByClassName("notion-topbar-action-buttons")[0]
@@ -268,22 +301,16 @@ const callback = function (mutationsList, observer) {
   }
 };
 
-async function insertRepositoriesList() {
-  //check if authenticated;
-  const auth = await new Promise((resolve, reject) => {
-    chrome.storage.local.get(["githubAuthentication"], (data) => {
-      if (chrome.runtime.lastError) {
-        reject(chrome.runtime.lastError);
-      } else {
-        resolve(data);
-      }
-    });
-  });
-  if (!auth.githubAuthentication.access_token) return;
+function debounce(func, wait) {
+  let timeout;
+  return function (...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
 
-  const repos = await getRepos(auth.githubAuthentication.access_token);
+async function insertRepositoriesList(repos) {
   let list = document.createElement("ul");
-  //list.className = "overflow-auto w-full border border-slate-500 rounded-md ";
   list.style.overflow = "auto";
   list.style.height = "200px";
   list.style.listStyleType = "none";
@@ -292,7 +319,6 @@ async function insertRepositoriesList() {
 
   for (const repo of repos) {
     let li = document.createElement("li");
-    //li.className = "flex justify-between items-center p-2 align-center  border-b-2 border-slate-600 ";
     li.style.display = "flex";
     li.style.justifyContent = "space-between";
     li.style.alignItems = "center";
