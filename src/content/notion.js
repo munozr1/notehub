@@ -25,6 +25,8 @@ async function searchRepos(event) {
     },
   });
   if (!res.ok) throw new Error("err fetching repos");
+  const resObj = await res.json();
+  insertRepositoriesList(resObj.items);
 }
 
 async function getRepos(token) {
@@ -335,6 +337,8 @@ async function insertRepositoriesList(repos) {
       document.getElementById("link-repo-button-text").innerText = truncate(
         repo.name,
       );
+      document.getElementById("link-repo-flyout-container").style.display =
+        "none";
     });
     li.appendChild(p);
     list.appendChild(li);
