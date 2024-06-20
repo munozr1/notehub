@@ -29,14 +29,15 @@ async function searchRepos(event) {
   insertRepositoriesList(resObj.items);
 }
 
-async function getRepos(token) {
+async function getRepos() {
   const username = await chrome.runtime.sendMessage({ state: "GETUSER" });
   const url = `https://api.github.com/users/${username}/repos?per_page=100`;
+  const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
   const res = await fetch(url, {
     method: "GET",
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${auth.access_token}`,
       "X-GitHub-Api-Version": "2022-11-28",
     },
   });
@@ -233,10 +234,16 @@ function insertLinkRepoButton() {
   buttonText.id = "link-repo-button-text";
   buttonText.textContent = "Link Repository";
   button.addEventListener("click", async () => {
-    if (listOpen) document.getElementById("menu-content").innerHTML = "";
-    else {
-      const auth = await chrome.runtime.sendMessage({ type: "GETAUTH" });
-      const repos = await getRepos(auth.access_token);
+    if (listOpen) {
+      document.getElementById("link-repo-flyout-container").style.display =
+        "none";
+      document.getElementById("search-repo").value = "";
+      //wait for 200ms
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    } else {
+      document.getElementById("link-repo-flyout-container").style.display =
+        "block";
+      const repos = await getRepos();
       insertRepositoriesList(repos);
     }
     listOpen = !listOpen;
@@ -260,12 +267,15 @@ function insertLinkRepoButton() {
   flyoutContainer.style.backgroundColor = "#202020";
   flyoutContainer.style.borderRadius = "10px";
   flyoutContainer.style.overflow = "hidden";
+  flyoutContainer.style.display = "none";
+  listOpen = false;
 
   // Create the menu content
   const menuContent = document.createElement("div");
   menuContent.id = "menu-content";
 
   const searchbar = document.createElement("input");
+  searchbar.id = "search-repo";
   searchbar.type = "text";
   searchbar.placeholder = "Search repositories";
   searchbar.style.backgroundColor = "#202020";
@@ -311,7 +321,9 @@ function debounce(func, wait) {
   };
 }
 
-async function insertRepositoriesList(repos) {
+function insertRepositoriesList(repos) {
+  const container = document.getElementById("menu-content");
+  container.innerHTML = "";
   let list = document.createElement("ul");
   list.style.overflow = "auto";
   list.style.height = "200px";
@@ -339,11 +351,13 @@ async function insertRepositoriesList(repos) {
       );
       document.getElementById("link-repo-flyout-container").style.display =
         "none";
+      listOpen = false;
     });
     li.appendChild(p);
     list.appendChild(li);
   }
-  document.getElementById("menu-content").appendChild(list);
+
+  container.appendChild(list);
 }
 
 function truncate(string) {
