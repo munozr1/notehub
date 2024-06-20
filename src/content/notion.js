@@ -13,6 +13,8 @@ async function getCurrentTab() {
 }
 
 async function getRepos() {
+  const accessToken = chrome.storage.local.get(["githubAuth"]).access_token;
+  //check
   const res = await fetch(url, {
     method: "GET",
     headers: {
@@ -152,7 +154,7 @@ async function updateFile(reponame, sha, filename) {
   }
 }
 
-function insertSyncButton() {
+async function insertSyncButton() {
   const nav = document.getElementsByClassName("notion-topbar-action-buttons")[0]
     .children[1];
   let sync = document.createElement("div");
@@ -173,17 +175,13 @@ function insertSyncButton() {
   </div>`;
   nav.appendChild(sync);
   sync.addEventListener("click", async () => {
-    //repos = await getRepos();
-    //console.log(repos);
     parseNotionHTML();
-    // const file = "README.md";
-    // const sha = await getFileSha(owner, repos[20].name, file);
-    console.log(markdown);
-    // await updateFile(repos[20].name, sha, file);
-    const gh = document.getElementById("syncgithub");
-    gh.classList.toggle("active");
-    console.log(gh);
-    sendMessage();
+    const auth = await chrome.storage.local.get(["githubAuth"]);
+    if (!auth.access_token) {
+      await initAuth();
+      return;
+    }
+    console.log("TODO: update github readme file", auth);
   });
 }
 
@@ -232,8 +230,6 @@ function insertLinkRepoButton() {
   flyoutContainer.appendChild(menuContent);
   container.appendChild(flyoutContainer);
 
-  // Append the container to the body or a specific element
-  // document.getElementById("menu-container").appendChild(container);
   document
     .getElementsByClassName("notion-topbar-action-buttons")[0]
     .children[1].appendChild(container);
@@ -251,12 +247,6 @@ const callback = function (mutationsList, observer) {
           console.log("Notion content loaded");
           insertSyncButton();
           insertLinkRepoButton();
-          const auth = chrome.storage.local.get(
-            ["githubAuthRequestResponse"],
-            (result) => {
-              console.log("githubAuthRequestResponse: ", result);
-            },
-          );
           observer.disconnect(); // Stop observing after the content is found and parsed
         }
         break;
@@ -425,12 +415,22 @@ function loadAuthCodeHtml(code) {
   document.getElementById("notion-app").appendChild(overlay);
 }
 
-async function sendMessage() {
+async function initAuth() {
   try {
-    const response = await chrome.runtime.sendMessage({ state: "INITAUTH" });
-    console.log("sendMessage => service_worker response: ", response);
-    //TODO: display code
-    loadAuthCodeHtml(response.user_code);
+    const initResponse = await chrome.runtime.sendMessage({
+      state: "INITAUTH",
+    });
+    loadAuthCodeHtml(initResponse.user_code);
+    //TODO: handle errs
+    const pollResp = await chrome.runtime.sendMessage({
+      state: "POLL",
+      deviceCode: initResponse.device_code,
+    });
+    console.log("pollResp => ", pollResp);
+    if (pollResp.state == "ERROR") return;
+    document.getElementById("sync-container").remove();
+    //TODO: display finished in the UI
+    //TODO: handle errs
   } catch (error) {
     console.log("sendMessage => Error sending message: ", error);
     //TODO: display err

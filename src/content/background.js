@@ -23,11 +23,12 @@ async function startGithubAuthentication(callback) {
     const url = "https://github.com/login/device/code";
 
     // Check if prev_data is not empty and not expired
-    if (prev_data && prev_data.expires_in > Date.now()) {
+    /*if (prev_data && prev_data.expires_in > Date.now()) {
       console.log("using previous data");
       callback(prev_data); // send to notion
       return prev_data;
     }
+    */
 
     console.log("fetching new data");
 
@@ -62,23 +63,41 @@ async function pollForToken(deviceCode, callback) {
     device_code: deviceCode,
     grant_type: "urn:ietf:params:oauth:grant-type:device_code",
   };
+  console.log("body", body);
+
   let pollResponse;
+  let responseData;
   do {
+    // Wait for 5 seconds
+    await new Promise((resolve) => setTimeout(resolve, 5000));
+
     pollResponse = await fetch(url, {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body,
+      body: JSON.stringify(body),
     });
+
+    responseData = await pollResponse.json();
+    console.log("polled => ", responseData);
   } while (
-    pollResponse.access_token != undefined &&
-    pollResponse.error != null
+    pollResponse.status === 400 ||
+    responseData.error === "authorization_pending"
   );
 
-  chrome.storage.local.set({ githubAuthentication: pollResponse });
-  callback(pollResponse);
+  console.log("got response: ", responseData);
+
+  // Check for successful response
+  if (pollResponse.status === 200) {
+    chrome.storage.local.set({ githubAuthentication: responseData });
+    callback(responseData);
+  } else {
+    // Handle error
+    callback({ state: "ERROR", data: responseData });
+    console.error("Error in polling: ", responseData);
+  }
 }
 
 function getAuthentication() {
