@@ -195,18 +195,19 @@ function insertLinkRepoButton() {
   // Create the main container
   const container = document.createElement("div");
   container.id = "link-repo-container";
-  container.style.color = "#D9D9D9";
+  container.style.backgroundColor = "#191919";
   container.style.marginLeft = "30px";
+  container.style.width = "180px";
 
   container.className = "relative";
 
   // Create the button
   const button = document.createElement("a");
-  button.className =
-    "inline-flex items-center gap-x-1 text-sm font-semibold leading-6 text-gray-900";
   button.style.display = "flex";
   button.style.alignItems = "center";
   button.style.cursor = "pointer";
+  button.style.color = "white";
+  button.style.justifyContent = "space-between";
   const buttonText = document.createElement("span");
   buttonText.id = "link-repo-button-text";
   buttonText.textContent = "Link Repository";
@@ -226,7 +227,7 @@ function insertLinkRepoButton() {
   flyoutContainer.id = "link-repo-flyout-container";
   flyoutContainer.style.position = "absolute";
   flyoutContainer.style.width = "180px";
-  flyoutContainer.style.backgroundColor = "white";
+  flyoutContainer.style.backgroundColor = "#202020";
   flyoutContainer.style.borderRadius = "10px";
 
   // Create the menu content
@@ -281,7 +282,6 @@ async function insertRepositoriesList() {
   if (!auth.githubAuthentication.access_token) return;
 
   const repos = await getRepos(auth.githubAuthentication.access_token);
-  console.log(repos);
   let list = document.createElement("ul");
   //list.className = "overflow-auto w-full border border-slate-500 rounded-md ";
   list.style.overflow = "auto";
@@ -301,11 +301,15 @@ async function insertRepositoriesList() {
 
     let p = document.createElement("p");
     p.innerText = truncate(repo.name);
-    // p.className = "text-white text-md font-semibold";
-    p.style.color = "black";
+    p.style.color = "white";
     p.style.fontSize = "14px";
     p.style.fontWeight = "600";
 
+    li.addEventListener("click", () => {
+      document.getElementById("link-repo-button-text").innerText = truncate(
+        repo.name,
+      );
+    });
     li.appendChild(p);
     list.appendChild(li);
   }
