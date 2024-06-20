@@ -351,6 +351,7 @@ function insertRepositoriesList(repos) {
       );
       document.getElementById("link-repo-flyout-container").style.display =
         "none";
+      document.getElementById("search-repo").value = "";
       listOpen = false;
     });
     li.appendChild(p);
