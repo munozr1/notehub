@@ -1,9 +1,9 @@
 let state = "";
 let notion_numbered_list_block_count = 0;
 let markdown = "";
-let accessToken = "";
 let owner = "munozr1";
 const url = `https://api.github.com/users/${owner}/repos`;
+let listOpen = false;
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
@@ -12,14 +12,12 @@ async function getCurrentTab() {
   return tab;
 }
 
-async function getRepos() {
-  const accessToken = chrome.storage.local.get(["githubAuth"]).access_token;
-  //check
+async function getRepos(token) {
   const res = await fetch(url, {
     method: "GET",
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${accessToken}`,
+      Authorization: `Bearer ${token}`,
       "X-GitHub-Api-Version": "2022-11-28",
     },
   });
@@ -175,13 +173,21 @@ async function insertSyncButton() {
   </div>`;
   nav.appendChild(sync);
   sync.addEventListener("click", async () => {
-    parseNotionHTML();
-    const auth = await chrome.storage.local.get(["githubAuth"]);
-    if (!auth.access_token) {
+    const auth = await new Promise((resolve, reject) => {
+      chrome.storage.local.get(["githubAuthentication"], (data) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+    if (!auth.githubAuthentication.access_token) {
       await initAuth();
       return;
     }
     console.log("TODO: update github readme file", auth);
+    parseNotionHTML();
   });
 }
 
@@ -230,6 +236,12 @@ function insertLinkRepoButton() {
   flyoutContainer.appendChild(menuContent);
   container.appendChild(flyoutContainer);
 
+  container.addEventListener("click", () => {
+    if (listOpen) document.getElementById("menu-content").innerHTML = "";
+    else insertRepositoriesList();
+    listOpen = !listOpen;
+  });
+
   document
     .getElementsByClassName("notion-topbar-action-buttons")[0]
     .children[1].appendChild(container);
@@ -256,29 +268,53 @@ const callback = function (mutationsList, observer) {
 };
 
 async function insertRepositoriesList() {
-  const repos = await getRepos();
-  list.className = "overflow-auto w-full border border-slate-500 rounded-md ";
+  //check if authenticated;
+  const auth = await new Promise((resolve, reject) => {
+    chrome.storage.local.get(["githubAuthentication"], (data) => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve(data);
+      }
+    });
+  });
+  if (!auth.githubAuthentication.access_token) return;
+
+  const repos = await getRepos(auth.githubAuthentication.access_token);
+  console.log(repos);
+  let list = document.createElement("ul");
+  //list.className = "overflow-auto w-full border border-slate-500 rounded-md ";
   list.style.overflow = "auto";
   list.style.height = "200px";
+  list.style.listStyleType = "none";
+  list.style.padding = "0px";
+  list.style.margin = "10px";
 
   for (const repo of repos) {
     let li = document.createElement("li");
-    li.className =
-      "flex justify-between items-center p-2 align-center  border-b-2 border-slate-600 ";
+    //li.className = "flex justify-between items-center p-2 align-center  border-b-2 border-slate-600 ";
+    li.style.display = "flex";
+    li.style.justifyContent = "space-between";
+    li.style.alignItems = "center";
+    li.style.borderBottom = "1px solid #D9D9D9";
+    li.style.cursor = "pointer";
+
     let p = document.createElement("p");
-    p.innerText = repo.name;
-    p.className = "text-white text-md font-semibold";
+    p.innerText = truncate(repo.name);
+    // p.className = "text-white text-md font-semibold";
+    p.style.color = "black";
+    p.style.fontSize = "14px";
+    p.style.fontWeight = "600";
 
-    let b = document.createElement("button");
-    b.innerText = "Update";
-    b.className =
-      "text-md flex rounded-md bg-white p-1 font-semibold text-black shadow-sm ";
-    b.onclick = async () => {
-      //TODO: link this page to the repo and update the text to be the repo name
-    };
-
-    document.getElementById("menu-container").appendChild(list);
+    li.appendChild(p);
+    list.appendChild(li);
   }
+  document.getElementById("menu-content").appendChild(list);
+}
+
+function truncate(string) {
+  //return a truncated string of max length 15
+  return string.length > 15 ? string.substring(0, 15) + "..." : string;
 }
 
 function loadAuthCodeHtml(code) {
