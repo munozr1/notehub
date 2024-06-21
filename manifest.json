@@ -8,7 +8,7 @@
     "default_icon": "./images/nohub.png"
   },
   "host_permissions": ["*://*.notion.com/*", "*://*.github.com/*"],
-  "background":{
+  "background": {
     "service_worker": "./src/content/background.js"
   },
   "content_scripts": [
@@ -18,5 +18,13 @@
       "run_at": "document_end"
     }
   ],
-  "permissions": ["cookies", "scripting", "activeTab", "identity", "storage"]
+  "permissions": [
+    "cookies",
+    "scripting",
+    "activeTab",
+    "identity",
+    "storage",
+    "webNavigation",
+    "tabs"
+  ]
 }
