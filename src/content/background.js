@@ -12,6 +12,9 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
     case "GETUSER":
       getUser(sendResponse);
       break;
+    case "REMOVEAUTH":
+      resetAuth(sendResponse);
+      break;
     default:
       break;
   }
@@ -43,7 +46,7 @@ async function startGithubAuthentication(callback) {
       },
       body: JSON.stringify({
         client_id: clientID,
-        scope: "repo, user",
+        scope: "repo user",
       }),
     });
 
@@ -188,4 +191,11 @@ async function getUser(callback) {
   const userObject = await response.json();
   await chrome.storage.local.set({ githubUser: userObject });
   callback(userObject.login);
+}
+
+async function resetAuth(callback) {
+  await chrome.storage.local.remove(["githubAuthentication"]);
+  await chrome.storage.local.remove(["githubAuthRequestResponse"]);
+  await chrome.storage.local.remove(["githubUser"]);
+  callback({ state: "SUCCESS" });
 }

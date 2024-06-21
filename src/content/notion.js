@@ -1,8 +1,6 @@
 let state = "";
 let notion_numbered_list_block_count = 0;
 let markdown = "";
-let owner = "munozr1";
-const url = `https://api.github.com/users/${owner}/repos`;
 let listOpen = false;
 
 async function getCurrentTab() {
@@ -124,19 +122,30 @@ function elmAction(elm) {
 }
 
 async function getFileSha(user, reponame, filename) {
+  const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
+  if (!auth) return;
   const response = await fetch(
     `https://api.github.com/repos/${user}/${reponame}/contents/${filename}`,
     {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${auth.access_token}`,
         Accept: "application/vnd.github+json",
       },
     },
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to fetch the file SHA");
+  switch (response.status) {
+    case 200:
+    case 201:
+      break;
+    case 401:
+      //remove the githubAuthentification from the storage
+      console.log("reset auth");
+      chrome.runtime.sendMessage({ state: "REMOVEAUTH" });
+      break;
+    default:
+      throw new Error("Failed to update the file");
   }
 
   const data = await response.json();
@@ -144,16 +153,20 @@ async function getFileSha(user, reponame, filename) {
 }
 
 async function updateFile(reponame, sha, filename) {
+  const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
+  const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
   const content = markdown;
   const message = "Update README.md";
-  const branch = "master";
+  const branches = await getBranches(user, reponame, auth.access_token);
+  //TODO: let user choose the branch to update
+  const branch = branches[0].name;
   const base64Content = btoa(content);
   const response = await fetch(
-    `https://api.github.com/repos/${owner}/${reponame}/contents/${filename}`,
+    `https://api.github.com/repos/${user}/${reponame}/contents/${filename}`,
     {
       method: "PUT",
       headers: {
-        Authorization: `Bearer ${accessToken}`,
+        Authorization: `Bearer ${auth.access_token}`,
         Accept: "application/vnd.github+json",
         "Content-Type": "application/json",
       },
@@ -166,8 +179,17 @@ async function updateFile(reponame, sha, filename) {
     },
   );
 
-  if (!response.ok) {
-    throw new Error("Failed to update the file");
+  switch (response.status) {
+    case 200:
+    case 201:
+      break;
+    case 401:
+      //remove the githubAuthentification from the storage
+      console.log("reset auth");
+      chrome.runtime.sendMessage({ state: "REMOVEAUTH" });
+      break;
+    default:
+      throw new Error("Failed to update the file");
   }
 }
 
@@ -193,8 +215,12 @@ async function insertSyncButton() {
       await initAuth();
       return;
     }
-    console.log("TODO: update github readme file", auth);
     parseNotionHTML();
+    const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
+    const link = await getLink();
+    const sha = await getFileSha(user, link.repo, "README.md");
+    console.log(markdown);
+    await updateFile(link.repo, sha, "README.md");
   });
 }
 
@@ -350,6 +376,27 @@ function insertRepositoriesList(repos) {
   container.appendChild(list);
 }
 
+// Function to fetch branches of a specific repository
+async function getBranches(user, repo, token) {
+  const url = `https://api.github.com/repos/${user}/${repo}/branches`;
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(
+      `Failed to fetch branches: ${response.status} ${response.statusText}`,
+    );
+  }
+
+  const data = await response.json();
+  return data;
+}
+
 async function updatePageLinks(link) {
   try {
     const data = await new Promise((resolve, reject) => {
@@ -384,6 +431,32 @@ async function updatePageLinks(link) {
   }
 }
 
+async function getLink() {
+  try {
+    const url = window.location.href;
+    let pageId = url.split("/").pop();
+    if (pageId.includes("-")) pageId = pageId.split("-").pop();
+    const data = await new Promise((resolve, reject) => {
+      chrome.storage.local.get(["links"], (data) => {
+        if (chrome.runtime.lastError) {
+          reject(chrome.runtime.lastError);
+        } else {
+          resolve(data);
+        }
+      });
+    });
+
+    let links = data.links || [];
+
+    if (links.length == 0) return "";
+    // Find link with the same pageId and then add the new link
+    return links.find((existingLink) => existingLink.pageId === pageId) || "";
+  } catch (error) {
+    console.error("Failed to update links: ", error);
+    return "";
+  }
+}
+
 function truncate(string) {
   return string.length > 15 ? string.substring(0, 15) + "..." : string;
 }
@@ -415,7 +488,10 @@ function loadAuthCodeHtml(code) {
   const exit = document.createElement("div");
   exit.style.width = "15px";
   exit.style.height = "15px";
-  exit.innerHTML = `< svg xmlns = "http://www.w3.org/2000/svg" fill = "none" viewBox = "0 0 24 24" stroke - width="1.5" stroke = "currentColor" class= "size-6" > <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" /></svg > `;
+  exit.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12" />
+  </svg>
+`;
   exit.style.cursor = "pointer";
   exit.addEventListener("click", () => {
     document.getElementById("sync-container").remove();
@@ -453,7 +529,10 @@ function loadAuthCodeHtml(code) {
 
   // Create the clipboard icon
   let clipboardIcon = document.createElement("div");
-  clipboardIcon.innerHTML = `< svg xmlns = "http://www.w3.org/2000/svg" fill = "none" viewBox = "0 0 24 24" stroke - width="1.5" stroke = "currentColor" class= "size-6" > <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg > `;
+  clipboardIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+  </svg>
+`;
   clipboardIcon.classList.add("size-6");
   clipboardIcon.style.color = "white";
   clipboardIcon.style.width = "15px";
@@ -483,7 +562,10 @@ function loadAuthCodeHtml(code) {
 
   // Create the arrow icon
   const arrowIcon = document.createElement("div");
-  arrowIcon.innerHTML = `< svg width = "24" height = "24" viewBox = "0 0 24 24" fill = "none" xmlns = "http://www.w3.org/2000/svg" > <path fill-rule="evenodd" clip-rule="evenodd" d="M12 21.75C17.3848 21.75 21.75 17.3848 21.75 12C21.75 6.61522 17.3848 2.25 12 2.25C6.61522 2.25 2.25 6.61522 2.25 12C2.25 17.3848 6.61522 21.75 12 21.75ZM16.2803 12.5303C16.421 12.3897 16.5 12.1989 16.5 12C16.5 11.8011 16.421 11.6103 16.2803 11.4697L13.2803 8.46967C12.9874 8.17678 12.5126 8.17678 12.2197 8.46967C11.9268 8.76256 11.9268 9.23744 12.2197 9.53033L13.9393 11.25H8.25C7.83579 11.25 7.5 11.5858 7.5 12C7.5 12.4142 7.83579 12.75 8.25 12.75L13.9393 12.75L12.2197 14.4697C11.9268 14.7626 11.9268 15.2374 12.2197 15.5303C12.5126 15.8232 12.9874 15.8232 13.2803 15.5303L16.2803 12.5303Z" fill="#5E626B" /></svg > `;
+  arrowIcon.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M12 21.75C17.3848 21.75 21.75 17.3848 21.75 12C21.75 6.61522 17.3848 2.25 12 2.25C6.61522 2.25 2.25 6.61522 2.25 12C2.25 17.3848 6.61522 21.75 12 21.75ZM16.2803 12.5303C16.421 12.3897 16.5 12.1989 16.5 12C16.5 11.8011 16.421 11.6103 16.2803 11.4697L13.2803 8.46967C12.9874 8.17678 12.5126 8.17678 12.2197 8.46967C11.9268 8.76256 11.9268 9.23744 12.2197 9.53033L13.9393 11.25H8.25C7.83579 11.25 7.5 11.5858 7.5 12C7.5 12.4142 7.83579 12.75 8.25 12.75L13.9393 12.75L12.2197 14.4697C11.9268 14.7626 11.9268 15.2374 12.2197 15.5303C12.5126 15.8232 12.9874 15.8232 13.2803 15.5303L16.2803 12.5303Z" fill="#5E626B"/>
+  </svg>
+`;
   arrowIcon.style.marginTop = "15px";
   arrowIcon.style.width = "15px";
   arrowIcon.style.height = "15px";
