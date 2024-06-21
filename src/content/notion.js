@@ -12,8 +12,8 @@ async function getCurrentTab() {
 
 async function searchRepos(event) {
   if (event.target.value === "") return;
-  const username = await chrome.runtime.sendMessage({ state: "GETUSER" });
-  const url = `https://api.github.com/search/repositories?q=user:${username}+${event.target.value}`;
+  const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
+  const url = `https://api.github.com/search/repositories?q=user:${user.login}+${event.target.value}`;
   const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
   const res = await fetch(url, {
     method: "GET",
@@ -28,8 +28,8 @@ async function searchRepos(event) {
 }
 
 async function getRepos() {
-  const username = await chrome.runtime.sendMessage({ state: "GETUSER" });
-  const url = `https://api.github.com/users/${username}/repos?per_page=100`;
+  const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
+  const url = `https://api.github.com/users/${user.login}/repos?per_page=100`;
   const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
   const res = await fetch(url, {
     method: "GET",
@@ -157,12 +157,17 @@ async function updateFile(reponame, sha, filename) {
   const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
   const content = markdown;
   const message = "Update README.md";
-  const branches = await getBranches(user, reponame, auth.access_token);
+  console.log("user => ", user);
+  const committer = {
+    name: auth.name,
+    email: auth.email,
+  };
+  const branches = await getBranches(user.login, reponame, auth.access_token);
   //TODO: let user choose the branch to update
   const branch = branches[0].name;
   const base64Content = btoa(content);
   const response = await fetch(
-    `https://api.github.com/repos/${user}/${reponame}/contents/${filename}`,
+    `https://api.github.com/repos/${user.login}/${reponame}/contents/${filename}`,
     {
       method: "PUT",
       headers: {
@@ -175,6 +180,7 @@ async function updateFile(reponame, sha, filename) {
         content: base64Content,
         sha: sha,
         branch: branch,
+        committer,
       }),
     },
   );
@@ -184,6 +190,8 @@ async function updateFile(reponame, sha, filename) {
     case 201:
       break;
     case 401:
+    case 402:
+    case 403:
       //remove the githubAuthentification from the storage
       console.log("reset auth");
       chrome.runtime.sendMessage({ state: "REMOVEAUTH" });
@@ -218,7 +226,7 @@ async function insertSyncButton() {
     parseNotionHTML();
     const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
     const link = await getLink();
-    const sha = await getFileSha(user, link.repo, "README.md");
+    const sha = await getFileSha(user.login, link.repo, "README.md");
     console.log(markdown);
     await updateFile(link.repo, sha, "README.md");
   });

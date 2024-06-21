@@ -30,13 +30,10 @@ async function startGithubAuthentication(callback) {
 
     // Check if prev_data is not empty and not expired
     /*if (prev_data && prev_data.expires_in > Date.now()) {
-      console.log("using previous data");
       callback(prev_data); // send to notion
       return prev_data;
     }
     */
-
-    console.log("fetching new data");
 
     const res = await fetch(url, {
       method: "POST",
@@ -46,7 +43,7 @@ async function startGithubAuthentication(callback) {
       },
       body: JSON.stringify({
         client_id: clientID,
-        scope: "repo user",
+        scope: "repo user user:email",
       }),
     });
 
@@ -56,7 +53,6 @@ async function startGithubAuthentication(callback) {
     callback(prev_data); // send to notion
     return data;
   } catch (error) {
-    console.log("error: ", error);
     callback(error);
     return { error: error.message };
   }
@@ -69,7 +65,6 @@ async function pollForToken(deviceCode, callback) {
     device_code: deviceCode,
     grant_type: "urn:ietf:params:oauth:grant-type:device_code",
   };
-  console.log("body", body);
 
   let pollResponse;
   let responseData;
@@ -87,13 +82,10 @@ async function pollForToken(deviceCode, callback) {
     });
 
     responseData = await pollResponse.json();
-    console.log("polled => ", responseData);
   } while (
     pollResponse.status === 400 ||
     responseData.error === "authorization_pending"
   );
-
-  console.log("got response: ", responseData);
 
   // Check for successful response
   if (pollResponse.status === 200) {
@@ -167,8 +159,8 @@ async function getUser(callback) {
     });
   });
   if (cachedUser.githubUser) {
-    callback(cachedUser.githubUser.login);
-    return cachedUser.githubUser.login;
+    callback(cachedUser.githubUser);
+    return cachedUser.githubUser;
   }
   const auth = await new Promise((resolve, reject) => {
     chrome.storage.local.get(["githubAuthentication"], (data) => {
@@ -180,7 +172,15 @@ async function getUser(callback) {
     });
   });
   const token = auth.githubAuthentication.access_token;
+  console.log("token => ", token);
   const response = await fetch("https://api.github.com/user", {
+    method: "GET",
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  const response2 = await fetch("https://api.github.com/user/emails", {
     method: "GET",
     headers: {
       Accept: "application/json",
@@ -189,8 +189,11 @@ async function getUser(callback) {
   });
   //store in local storage
   const userObject = await response.json();
+  const emailObject = await response2.json();
+  console.log("emailObj => ", emailObject);
+  userObject.email = emailObject[0].email;
   await chrome.storage.local.set({ githubUser: userObject });
-  callback(userObject.login);
+  callback(userObject);
 }
 
 async function resetAuth(callback) {
