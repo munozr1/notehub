@@ -38,11 +38,9 @@ async function startGithubAuthentication(callback) {
       },
       body: JSON.stringify(body),
     });
-    console.log(JSON.stringify(body));
 
     const data = await res.json();
     data.expires_in = Date.now() + data.expires_in * 1000;
-    console.log("startGithubAuthentication() => data: ", data);
     await chrome.storage.local.set({ githubAuthRequestResponse: data });
     callback(data); // send to notion
     return data;
@@ -85,7 +83,6 @@ async function pollForToken(deviceCode, callback) {
   if (pollResponse.status === 200) {
     responseData.expires_in = Date.now() + responseData.expires_in * 1000;
     chrome.storage.local.set({ githubAuthentication: responseData });
-    console.log("set githubAuthenticationub: ", responseData);
     callback(responseData);
   } else {
     // Handle error
@@ -104,8 +101,6 @@ async function getAuthentication(callback) {
       }
     });
   });
-
-  console.log("getAuthentication() => auth: ", auth);
 
   if (auth.githubAuthentication && auth.githubAuthentication.access_token) {
     const currentTime = Date.now();
@@ -171,7 +166,6 @@ async function getUser(callback) {
     });
   });
   const token = auth.githubAuthentication.access_token;
-  console.log("token => ", token);
   const response = await fetch("https://api.github.com/user", {
     method: "GET",
     headers: {
@@ -189,7 +183,6 @@ async function getUser(callback) {
   //store in local storage
   const userObject = await response.json();
   const emailObject = await response2.json();
-  console.log("emailObj => ", emailObject);
   userObject.email = emailObject[0].email;
   await chrome.storage.local.set({ githubUser: userObject });
   callback(userObject);

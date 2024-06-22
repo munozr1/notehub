@@ -140,7 +140,6 @@ async function getFileSha(user, reponame, filename) {
       break;
     case 401:
       //remove the githubAuthentification from the storage
-      console.log("reset auth");
       await chrome.runtime.sendMessage({ state: "REMOVEAUTH" });
       throw new Error("getFileSha() => Had to reset auth");
     default:
@@ -156,7 +155,6 @@ async function updateFile(reponame, sha, filename) {
   const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
   const content = markdown;
   const message = "Update README.md";
-  console.log("user => ", user);
   const committer = {
     name: user.name,
     email: user.email,
@@ -192,7 +190,6 @@ async function updateFile(reponame, sha, filename) {
     case 402:
     case 403:
       //remove the githubAuthentification from the storage
-      console.log("reset auth");
       chrome.runtime.sendMessage({ state: "REMOVEAUTH" });
       break;
     default:
@@ -219,16 +216,13 @@ async function insertSyncButton() {
   sync.addEventListener("click", async () => {
     try {
       const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
-      console.log("SyncButton => auth: ", auth);
       if (auth.error) {
         await initAuth();
       } else {
-        console.log("is authed => ", auth);
         parseNotionHTML();
         const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
         const link = await getLink();
         const sha = await getFileSha(user.login, link.repo, "README.md");
-        console.log(markdown);
         await updateFile(link.repo, sha, "README.md");
       }
     } catch (e) {
@@ -437,8 +431,6 @@ async function updatePageLinks(link) {
         }
       });
     });
-
-    console.log("Updated links => ", links);
   } catch (error) {
     console.error("Failed to update links: ", error);
   }
@@ -631,7 +623,6 @@ async function initAuth() {
       state: "POLL",
       deviceCode: initResponse.device_code,
     });
-    console.log("pollResp => ", pollResp);
     if (pollResp.state == "ERROR") return;
     document.getElementById("sync-container").remove();
     //TODO: display finished in the UI
@@ -651,7 +642,6 @@ const callback = function (mutationsList, observer) {
       let res = document.getElementsByClassName("notion-topbar-action-buttons");
       if (res.length > 0) {
         if (res[0].children.length > 0) {
-          console.log("Notion content loaded");
           insertSyncButton();
           insertLinkRepoButton();
           observer.disconnect(); // Stop observing after the content is found and parsed

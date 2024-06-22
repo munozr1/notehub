@@ -18,13 +18,5 @@
       "run_at": "document_end"
     }
   ],
-  "permissions": [
-    "cookies",
-    "scripting",
-    "activeTab",
-    "identity",
-    "storage",
-    "webNavigation",
-    "tabs"
-  ]
+  "permissions": ["scripting", "activeTab", "storage"]
 }
