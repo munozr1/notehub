@@ -23,17 +23,12 @@ chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
 
 async function startGithubAuthentication(callback) {
   try {
-    const { githubAuthRequestResponse: prev_data } =
-      await chrome.storage.local.get(["githubAuthRequestResponse"]);
-    const clientID = "Iv23lieCe6IdGN8ziPP2";
+    //TODO: handle slow down err from github
+    const body = {
+      client_id: "Ov23li8SwPGDIQrWBOs1",
+      scope: "repo user",
+    };
     const url = "https://github.com/login/device/code";
-
-    // Check if prev_data is not empty and not expired
-    /*if (prev_data && prev_data.expires_in > Date.now()) {
-      callback(prev_data); // send to notion
-      return prev_data;
-    }
-    */
 
     const res = await fetch(url, {
       method: "POST",
@@ -41,16 +36,15 @@ async function startGithubAuthentication(callback) {
         Accept: "application/json",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        client_id: clientID,
-        scope: "repo user user:email",
-      }),
+      body: JSON.stringify(body),
     });
+    console.log(JSON.stringify(body));
 
     const data = await res.json();
     data.expires_in = Date.now() + data.expires_in * 1000;
+    console.log("startGithubAuthentication() => data: ", data);
     await chrome.storage.local.set({ githubAuthRequestResponse: data });
-    callback(prev_data); // send to notion
+    callback(data); // send to notion
     return data;
   } catch (error) {
     callback(error);
@@ -61,7 +55,7 @@ async function startGithubAuthentication(callback) {
 async function pollForToken(deviceCode, callback) {
   const url = "https://github.com/login/oauth/access_token";
   const body = {
-    client_id: "Iv23lieCe6IdGN8ziPP2",
+    client_id: "Ov23li8SwPGDIQrWBOs1",
     device_code: deviceCode,
     grant_type: "urn:ietf:params:oauth:grant-type:device_code",
   };
@@ -91,6 +85,7 @@ async function pollForToken(deviceCode, callback) {
   if (pollResponse.status === 200) {
     responseData.expires_in = Date.now() + responseData.expires_in * 1000;
     chrome.storage.local.set({ githubAuthentication: responseData });
+    console.log("set githubAuthenticationub: ", responseData);
     callback(responseData);
   } else {
     // Handle error
@@ -110,18 +105,21 @@ async function getAuthentication(callback) {
     });
   });
 
+  console.log("getAuthentication() => auth: ", auth);
+
   if (auth.githubAuthentication && auth.githubAuthentication.access_token) {
     const currentTime = Date.now();
     const tokenExpiryTime = auth.githubAuthentication.expires_in;
 
-    if (currentTime < tokenExpiryTime) {
-      callback(auth.githubAuthentication);
-      return auth.githubAuthentication;
-    } else {
+    // if (currentTime < tokenExpiryTime) {
+    callback(auth.githubAuthentication);
+    return auth.githubAuthentication;
+    /* } else {
       // Token has expired, use refresh token to get a new access token
+      console.log("Token has expired, refreshing token");
       const refreshTokenUrl = "https://github.com/login/oauth/access_token";
       const refreshTokenBody = {
-        client_id: "Iv23lieCe6IdGN8ziPP2",
+        client_id: "Ov23li8SwPGDIQrWBOs1",
         refresh_token: auth.githubAuthentication.refresh_token,
         grant_type: "refresh_token",
       };
@@ -141,6 +139,7 @@ async function getAuthentication(callback) {
       callback(newAuthData);
       return newAuthData;
     }
+    */
   } else {
     callback({ error: "ERROR" });
     return { error: "No authentication data found" };

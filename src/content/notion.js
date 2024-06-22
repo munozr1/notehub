@@ -116,7 +116,6 @@ function elmAction(elm) {
       markdown += `- ${element.innerText} \n`;
       break;
     default:
-      console.log("unknown element");
       break;
   }
 }
@@ -142,10 +141,10 @@ async function getFileSha(user, reponame, filename) {
     case 401:
       //remove the githubAuthentification from the storage
       console.log("reset auth");
-      chrome.runtime.sendMessage({ state: "REMOVEAUTH" });
-      break;
+      await chrome.runtime.sendMessage({ state: "REMOVEAUTH" });
+      throw new Error("getFileSha() => Had to reset auth");
     default:
-      throw new Error("Failed to update the file");
+      throw new Error("getFileSha() => Failed to update the file");
   }
 
   const data = await response.json();
@@ -159,8 +158,8 @@ async function updateFile(reponame, sha, filename) {
   const message = "Update README.md";
   console.log("user => ", user);
   const committer = {
-    name: auth.name,
-    email: auth.email,
+    name: user.name,
+    email: user.email,
   };
   const branches = await getBranches(user.login, reponame, auth.access_token);
   //TODO: let user choose the branch to update
@@ -180,7 +179,7 @@ async function updateFile(reponame, sha, filename) {
         content: base64Content,
         sha: sha,
         branch: branch,
-        committer,
+        committer: committer,
       }),
     },
   );
@@ -218,17 +217,23 @@ async function insertSyncButton() {
 <path d="M19.0258 44.7791L40.2918 55.6383C40.7064 55.8501 40.92 56.3199 40.8071 56.7715L40.2691 58.9236C40.1252 59.4991 39.5148 59.8236 38.9572 59.6208L31.1997 56.7999C30.3724 56.4991 29.5881 57.3367 29.9427 58.1424L31.0647 60.6925C33.2119 65.5724 37.6487 69.0623 42.8971 69.9995L48.5 71L46.4837 75.8968C45.6008 78.0409 43.4279 79.3633 41.1179 79.1624C36.3685 78.7494 32.1528 75.9553 29.9222 71.7419L29.655 71.2372C29.229 70.4326 28.5622 69.7811 27.7479 69.3739L25.8215 68.4107C24.715 67.8575 23.3859 68.0117 22.4356 68.8037C21.7822 69.3482 21.9399 70.3916 22.7249 70.7187L23.6782 71.1159C25.7773 71.9906 27.3639 73.7736 27.9886 75.9602L28.7164 78.5073C28.9024 79.1584 29.2512 79.7512 29.73 80.23L29.9645 80.4645C32.2282 82.7282 35.2986 84 38.5 84L45 84.5V94.1914C45 94.3958 44.9671 94.5988 44.9024 94.7927C44.6621 95.5137 43.9874 96 43.2274 96H41L40.536 95.768C27.2494 89.1247 16.6461 78.1214 10.4991 64.598C10.2621 64.0767 9.57034 63.9655 9.18189 64.3863L4.59828 69.3519C4.25642 69.7222 3.69237 69.7803 3.28224 69.4873L1.31864 68.0847C0.867316 67.7624 0.764572 67.1343 1.08965 66.6849L16.4958 45.3881C17.0737 44.5892 18.1477 44.3307 19.0258 44.7791Z" fill="#E49A40"/></svg></div></div>`;
   nav.appendChild(sync);
   sync.addEventListener("click", async () => {
-    const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
-    if (auth.error) {
-      await initAuth();
-      return;
+    try {
+      const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
+      console.log("SyncButton => auth: ", auth);
+      if (auth.error) {
+        await initAuth();
+      } else {
+        console.log("is authed => ", auth);
+        parseNotionHTML();
+        const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
+        const link = await getLink();
+        const sha = await getFileSha(user.login, link.repo, "README.md");
+        console.log(markdown);
+        await updateFile(link.repo, sha, "README.md");
+      }
+    } catch (e) {
+      throw e;
     }
-    parseNotionHTML();
-    const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
-    const link = await getLink();
-    const sha = await getFileSha(user.login, link.repo, "README.md");
-    console.log(markdown);
-    await updateFile(link.repo, sha, "README.md");
   });
 }
 
@@ -617,6 +622,9 @@ async function initAuth() {
     const initResponse = await chrome.runtime.sendMessage({
       state: "INITAUTH",
     });
+    if (!initResponse.user_code)
+      throw new Error(`No user code ${JSON.stringify(initResponse)}`);
+
     loadAuthCodeHtml(initResponse.user_code);
     //TODO: handle errs
     const pollResp = await chrome.runtime.sendMessage({
@@ -629,7 +637,7 @@ async function initAuth() {
     //TODO: display finished in the UI
     //TODO: handle errs
   } catch (error) {
-    console.log("sendMessage => Error sending message: ", error);
+    console.error("initAuth() => " + error);
     //TODO: display err
   }
 }
