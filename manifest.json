@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "NoHub",
+  "name": "SyncHub",
   "description": "Create readmes in the comfort of notion.",
   "version": "1.2",
   "action": {
