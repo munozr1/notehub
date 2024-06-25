@@ -8,19 +8,19 @@ Securely authenticate with GitHub using the OAuth flow to ensure that your data 
 ## Getting Started 
 - A GitHub account 
 - A Notion account 
-17. Install the Extension:
+1. Install the Extension:
 Download and install the extension from the provided link. 
-18. Authorize GitHub:
+2. Authorize GitHub:
 Follow the OAuth flow to authorize the extension to access your GitHub repositories. 
-19. Link a Repository: 
-20. Update README: 
+3. Link a Repository: 
+4. Update README: 
 ## Usage 
-21. Open Notion:
+5. Open Notion:
 Open your Notion workspace and navigate to the linked GitHub repository page. 
-22. Make sure a repository is linked to the current Notion Page 
-23. Edit README:
+6. Make sure a repository is linked to the current Notion Page 
+7. Edit README:
 Make any necessary changes to the README content in the Notion page. 
-24. Update GitHub README:
+8. Update GitHub README:
 Click the "Update README" button. Your changes will be pushed to the linked GitHub repository. 
 ## License 
 This project is licensed under the MIT License - see the LICENSE.md file for details. 
