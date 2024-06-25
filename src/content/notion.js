@@ -1,6 +1,5 @@
 let state = "";
 let notion_numbered_list_block_count = 0;
-let markdown = "";
 let listOpen = false;
 
 async function getCurrentTab() {
@@ -45,15 +44,18 @@ async function getRepos() {
 }
 
 function parseNotionHTML() {
-  markdown = "";
+  const header = document.querySelector("h1").innerText;
+  markdown = `# ${header}\n\n`;
   const elms = document.getElementsByClassName("notion-page-content")[0]
     .children;
   for (const elm of elms) {
-    elmAction(elm);
+    markdown += elmAction(elm);
   }
+  return markdown;
 }
 
 function elmAction(elm) {
+  let markdown = "";
   const className = elm.className.split(" ")[1];
   const element = elm.getElementsByClassName("notranslate")[0];
   const img = elm.querySelector("img");
@@ -118,6 +120,8 @@ function elmAction(elm) {
     default:
       break;
   }
+
+  return markdown;
 }
 
 async function getFileSha(user, reponame, filename) {
@@ -153,7 +157,7 @@ async function getFileSha(user, reponame, filename) {
 async function updateFile(reponame, sha, filename) {
   const auth = await chrome.runtime.sendMessage({ state: "GETAUTH" });
   const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
-  const content = markdown;
+  const content = parseNotionHTML();
   const message = "Update README.md";
   const committer = {
     name: user.name,
@@ -201,6 +205,7 @@ async function insertSyncButton() {
   const nav = document.getElementsByClassName("notion-topbar-action-buttons")[0]
     .children[1];
   let sync = document.createElement("div");
+  sync.id = "sync";
   sync.style.position = "relative";
   sync.style.display = "flex";
   sync.style.alignItems = "center";
@@ -219,16 +224,26 @@ async function insertSyncButton() {
       if (auth.error) {
         await initAuth();
       } else {
-        parseNotionHTML();
         const user = await chrome.runtime.sendMessage({ state: "GETUSER" });
         const link = await getLink();
-        const sha = await getFileSha(user.login, link.repo, "README.md");
-        await updateFile(link.repo, sha, "README.md");
+        //const sha = await getFileSha(user.login, link.repo, "README.md");
+        //await updateFile(link.repo, sha, "README.md");
+        const svg = document.getElementById("syncgithub");
+        svg.style.transition = "transform 1.3s";
+        svg.style.transform = "rotate(360deg)";
+        await new Promise((resolve) => setTimeout(resolve, 1300));
+        svg.style.transition = "transform 0s";
+        svg.style.transform = "rotate(0deg)";
+        alert("Synced with GitHub successful");
       }
     } catch (e) {
       throw e;
     }
   });
+}
+
+function getElm(id) {
+  return document.getElementById(id);
 }
 
 async function insertLinkRepoButton() {
