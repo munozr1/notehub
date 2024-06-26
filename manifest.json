@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "SyncHub",
   "description": "Create readmes in the comfort of notion.",
-  "version": "1.2",
+  "version": "1.3",
   "action": {
     "default_popup": "./src/popup.html",
     "default_icon": "./images/nohub.png"
